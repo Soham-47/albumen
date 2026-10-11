@@ -57,7 +57,7 @@ These numbers come from the Drive zip, not from the Universe page.
 
 ## Assignment PDF
 
-The plan lists `/workspace/nosh_assignment.pdf`. That path does not exist on this machine, and no other local copy was found. `docs/assignment.pdf` is absent until that file is copied in.
+`docs/assignment.pdf` is a copy of `~/Downloads/CV Intern Task Wellfound.pdf` (same bytes as the `(1)` download). The plan path `/workspace/nosh_assignment.pdf` does not exist on this machine.
 
 ## Later phases
 
