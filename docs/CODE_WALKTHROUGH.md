@@ -57,7 +57,7 @@ Run: `python src/task4_track.py`
 - On 1440 frames the frozen gates give 4 unique ids, 757 frames with at least one egg, and at most 2 eggs in a frame.
 - Outputs: `video/tracked_full.mp4`, `video/tracked_preview.mp4`, `docs/figures/track_frame_01.jpg` through `track_frame_04.jpg`.
 
-## If they ask X, edit Y
+## Parameter Tuning
 
 1. Brown eggs. Set `brown_on: true` in `configs/classical_final.yaml` (line 7). The hue, saturation, and value ranges are the next three lines. Re-run Task 2. This lowered dev mIoU on the white-egg set.
 2. Morphology kernel. `open_k` is line 12 and `close_k` is line 13 of the same yaml. Odd integers. Larger open removes more specks. Larger close fills bigger gaps and can glue the egg to the table.
