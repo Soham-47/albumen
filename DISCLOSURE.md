@@ -1,23 +1,25 @@
 # AI tool disclosure
 
-Grok (xAI), through the Grok Build coding agent, drafted this repository with Soham. No model was trained. Numbers in the report are from scripts run on this machine, not from guessed dataset facts.
+I built Albumen with Grok (xAI) in Grok Build. I set the goal, the data, the split, and which recipe to keep. The agent wrote the code and the drafts, and I used it to run the trials and the write-up instead of retyping each step. No model was trained. Every score in the report comes from a script on this machine.
 
-## What the agent wrote
+## What I decided
 
-- The work plan (sections, trial design, report outline).
-- Repository scaffold, `requirements.txt`, and scripts under `scripts/`.
-- `src/download_data.py`, `src/split.py`, `src/task1_sam.py`, `src/task2_classical.py`, `src/task3_eval.py`, `src/task4_track.py`, `src/metrics.py`, `src/viz.py`.
-- `experiments/log.md` entries after each measured trial.
-- `docs/report.md`, this file, `README.md`, and `docs/wellfound_reply.txt`.
+- Use the Roboflow egg photos and the public 1080p clip, and score classical masks against SAM unions because the zip has no boxes.
+- Split near-duplicates with perceptual-hash Hamming distance ≤ 8, then a 4:1 cut, seed 42.
+- Keep recipe T10 (white HSV, blur, open, close) after the logged trials. Brown, circularity, ellipse fill, and border drop lowered dev mIoU, so they stayed off.
+- Report the measured dev and eval numbers, and the tracking counts from the full clip, without retuning on eval.
+- Publish the repo as Albumen and state this split of work.
 
-## What was not invented by the model
+## What the agent drafted
+
+- The repo scaffold, `requirements.txt`, and the scripts under `scripts/`.
+- `src/download_data.py`, `src/split.py`, `src/task1_sam.py`, `src/task2_classical.py`, `src/task3_eval.py`, `src/task4_track.py`, `src/metrics.py`, and `src/viz.py`.
+- `experiments/log.md` after each measured trial, plus `README.md`, `docs/report.md`, `docs/CODE_WALKTHROUGH.md`, and this file.
+- The scoring and tracking runs that filled `outputs/figures/metrics_summary.json` and `outputs/video/track_summary.json`.
+
+## What was not invented
 
 - Image bytes from Google Drive id `1a58rACcCFnaj0ZiDoNyGbDWXunRyWziv`.
 - SAM ViT-B weights from `https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth`. Masks come from the installed `segment-anything` package on CPU.
-- The Task 4 source clip from `https://www.youtube.com/watch?v=Y4JyV94y2_A` via yt-dlp.
-- Dev and eval scores in `outputs/figures/metrics_summary.json`.
-- Tracking counts in `outputs/video/track_summary.json`.
-
-## What a person still has to do
-
-Soham reviews the report, uploads `video/tracked_full.mp4` to Google Drive (anyone with the link), pastes that URL over the placeholder in `docs/report.md` and `docs/video_drive_url.txt`, and rebuilds the PDF if he wants the live link inside it.
+- The source clip from `https://www.youtube.com/watch?v=Y4JyV94y2_A` via yt-dlp.
+- Dev and eval scores, and the tracking counts, which are outputs of those runs.
