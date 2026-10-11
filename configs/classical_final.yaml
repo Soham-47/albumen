@@ -1,18 +1,20 @@
 # Kept recipe T10. Dev mIoU 0.3842, mean Dice 0.5048, empty_pred_rate 0.
 # Brown, circularity, ellipse fill, and border drop all lowered dev mIoU.
-mode: hsv
-white_s_max: 60
-white_v_min: 170
-brown_on: false
-brown_h: [5, 30]
+# Same keys as CONFIG in src/task2_classical.py. This file wins at run time.
+mode: hsv                 # hsv (shipped) or gray_otsu (trial T01 only)
+white_s_max: 60           # lower: reject tinted pixels (skin, yolk). higher: keep more colour
+white_v_min: 170          # higher: ignore dim paper and grey tables. lower: keep dim shells
+brown_on: false           # true ORs in the brown range below. It lowered dev mIoU
+brown_h: [5, 30]          # OpenCV hue 0-180. Used only when brown_on is true
 brown_s: [40, 220]
 brown_v: [40, 220]
-blur: 5
-open_k: 5
-close_k: 11
-min_area_frac: 0
-max_area_frac: 1
-min_circularity: 0
-ellipse_fill: false
-drop_border_frac: null
-fill_holes: false
+blur: 5                   # Gaussian kernel before the colour gate. 0 or 1 skips blur
+open_k: 5                 # ellipse open. larger removes more specks and also thin shell edges
+close_k: 11               # ellipse close. larger bridges bigger gaps and can join the table
+min_area_frac: 0          # drop blobs smaller than this fraction of the image. 0 keeps all
+max_area_frac: 1          # drop blobs larger than this fraction. 1 keeps all
+min_circularity: 0        # 4*pi*area/perimeter^2. 0 is off. ~0.7 keeps rounder blobs
+ellipse_fill: false       # true replaces each blob with its fitted ellipse
+drop_border_frac: null    # drop a blob that touches more than this fraction of the border
+fill_holes: false         # true fills holes inside a blob after close
+

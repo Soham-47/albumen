@@ -1,5 +1,8 @@
 """Task 1: SAM ViT-B automatic masks, then an egg filter. CPU only.
 
+Input: images in data/manifest.csv and checkpoints/sam_vit_b_01ec64.pth.
+Output: outputs/sam_masks/<stem>_union.png (the mask Task 2 and Task 3 score against).
+Run: python src/task1_sam.py
 Raw proposals are cached under outputs/sam_cache/ so a rerun skips SAM.
 """
 

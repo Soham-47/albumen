@@ -1,12 +1,16 @@
-"""Classical egg mask. One function, knobs in a dict or YAML file.
+"""Task 2: classical egg mask. No neural net.
 
-OpenCV, numpy, and scipy only. No neural net and no grabCut.
+Inputs: a BGR image and configs/classical_final.yaml.
+Output: a uint8 mask, 255 on egg pixels.
+Run: python src/task2_classical.py --save-all
+     python src/task2_classical.py --score-dev
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import sys
 from pathlib import Path
 
 import cv2
@@ -15,6 +19,7 @@ import yaml
 from scipy import ndimage
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO))
 
 # Excluded from scoring. Masks are still written for every image.
 SCORE_SKIP_STEMS = (
@@ -30,38 +35,59 @@ def load_cfg(path: Path | None = None) -> dict:
         return yaml.safe_load(handle)
 
 
-def segment_eggs(bgr: np.ndarray, cfg: dict | None = None) -> np.ndarray:
-    """Return a uint8 mask, 255 on egg pixels."""
-    if cfg is None:
-        cfg = load_cfg()
-    h, w = bgr.shape[:2]
-    if cfg.get("mode") == "gray_otsu":
-        gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-        k = int(cfg.get("blur") or 0)
-        if k >= 3:
-            gray = cv2.GaussianBlur(gray, (k, k), 0)
-        _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        if gray[mask > 0].mean() < gray[mask == 0].mean():
-            mask = cv2.bitwise_not(mask)
-    else:
-        hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
-        k = int(cfg.get("blur") or 0)
-        if k >= 3:
-            hsv = cv2.GaussianBlur(hsv, (k, k), 0)
-        white = cv2.inRange(
+# Same numbers as configs/classical_final.yaml. The file wins when it is present.
+# Raise white_v_min to ignore dim paper. Lower white_s_max to ignore skin.
+# Set brown_on true to add a brown shell range (this lowered dev mIoU).
+# open_k removes specks. close_k fills small holes. blur smooths before the gate.
+CONFIG = {
+    "mode": "hsv",
+    "white_s_max": 60,
+    "white_v_min": 170,
+    "brown_on": False,
+    "brown_h": [5, 30],
+    "brown_s": [40, 220],
+    "brown_v": [40, 220],
+    "blur": 5,
+    "open_k": 5,
+    "close_k": 11,
+    "min_area_frac": 0,
+    "max_area_frac": 1,
+    "min_circularity": 0,
+    "ellipse_fill": False,
+    "drop_border_frac": None,
+    "fill_holes": False,
+}
+
+
+def to_hsv(bgr: np.ndarray, cfg: dict) -> np.ndarray:
+    """Blur in HSV so the colour gate is less speckled."""
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+    kernel = int(cfg.get("blur") or 0)
+    if kernel >= 3:
+        hsv = cv2.GaussianBlur(hsv, (kernel, kernel), 0)
+    return hsv
+
+
+def white_mask(hsv: np.ndarray, cfg: dict) -> np.ndarray:
+    """Eggs in this set are white: low saturation, high value."""
+    mask = cv2.inRange(
+        hsv,
+        (0, 0, int(cfg["white_v_min"])),
+        (180, int(cfg["white_s_max"]), 255),
+    )
+    if cfg.get("brown_on"):
+        hue, sat, val = cfg["brown_h"], cfg["brown_s"], cfg["brown_v"]
+        brown = cv2.inRange(
             hsv,
-            (0, 0, int(cfg["white_v_min"])),
-            (180, int(cfg["white_s_max"]), 255),
+            (int(hue[0]), int(sat[0]), int(val[0])),
+            (int(hue[1]), int(sat[1]), int(val[1])),
         )
-        mask = white
-        if cfg.get("brown_on"):
-            bh, bs, bv = cfg["brown_h"], cfg["brown_s"], cfg["brown_v"]
-            brown = cv2.inRange(
-                hsv,
-                (int(bh[0]), int(bs[0]), int(bv[0])),
-                (int(bh[1]), int(bs[1]), int(bv[1])),
-            )
-            mask = cv2.bitwise_or(white, brown)
+        mask = cv2.bitwise_or(mask, brown)
+    return mask
+
+
+def clean_mask(mask: np.ndarray, cfg: dict) -> np.ndarray:
+    """Open drops specks. Close joins broken shell pixels."""
     open_k = int(cfg.get("open_k") or 0)
     close_k = int(cfg.get("close_k") or 0)
     if open_k >= 3:
@@ -72,55 +98,86 @@ def segment_eggs(bgr: np.ndarray, cfg: dict | None = None) -> np.ndarray:
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     if cfg.get("fill_holes"):
         mask = (ndimage.binary_fill_holes(mask > 0).astype(np.uint8)) * 255
+    return mask
 
+
+def filter_blobs(mask: np.ndarray, cfg: dict) -> np.ndarray:
+    """Optional area, circularity, border, and ellipse steps. T10 turns them off."""
+    height, width = mask.shape[:2]
     min_frac = float(cfg.get("min_area_frac") or 0)
     max_frac = float(cfg.get("max_area_frac") or 1)
     min_circ = float(cfg.get("min_circularity") or 0)
     border_max = cfg.get("drop_border_frac")
-    n, labels, stats, _ = cv2.connectedComponentsWithStats(mask)
-    kept = np.zeros((h, w), np.uint8)
-    border = np.zeros((h, w), bool)
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(mask)
+    kept = np.zeros((height, width), np.uint8)
+    border = np.zeros((height, width), bool)
     border[0, :] = border[-1, :] = border[:, 0] = border[:, -1] = True
-    border_n = float(border.sum())
-    for i in range(1, n):
-        area = int(stats[i, cv2.CC_STAT_AREA])
-        frac = area / float(h * w)
+    border_count = float(border.sum())
+    for index in range(1, count):
+        area = int(stats[index, cv2.CC_STAT_AREA])
+        frac = area / float(height * width)
         if frac < min_frac or frac > max_frac:
             continue
-        comp = labels == i
+        component = labels == index
         if min_circ > 0:
-            ys, xs = np.nonzero(comp)
-            if len(xs) < 5:
+            rows, cols = np.nonzero(component)
+            if len(cols) < 5:
                 continue
-            contour = np.stack([xs, ys], axis=1).astype(np.int32).reshape(-1, 1, 2)
-            # Perimeter from the component contour, not the raw pixel list.
-            cnts, _ = cv2.findContours(comp.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            if not cnts:
+            contours, _ = cv2.findContours(
+                component.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
+            )
+            if not contours:
                 continue
-            per = cv2.arcLength(max(cnts, key=cv2.contourArea), True)
-            circ = 0.0 if per <= 0 else float(4 * np.pi * area / (per * per))
-            if circ < min_circ:
+            perimeter = cv2.arcLength(max(contours, key=cv2.contourArea), True)
+            circularity = 0.0 if perimeter <= 0 else float(4 * np.pi * area / (perimeter * perimeter))
+            if circularity < min_circ:
                 continue
-        if border_max is not None and float((comp & border).sum()) / border_n > float(border_max):
+        if border_max is not None and float((component & border).sum()) / border_count > float(border_max):
             continue
         if cfg.get("ellipse_fill"):
-            cnts, _ = cv2.findContours(comp.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            cnt = max(cnts, key=cv2.contourArea) if cnts else None
-            if cnt is not None and len(cnt) >= 5:
-                (center, axes, angle) = cv2.fitEllipse(cnt)
-                ang = np.deg2rad(float(angle))
-                cos_a, sin_a = np.cos(ang), np.sin(ang)
-                yy, xx = np.ogrid[:h, :w]
-                xc = xx - float(center[0])
-                yc = yy - float(center[1])
-                xr = cos_a * xc + sin_a * yc
-                yr = -sin_a * xc + cos_a * yc
-                a = max(float(axes[0]), 1.0) / 2.0
-                b = max(float(axes[1]), 1.0) / 2.0
-                kept[(xr / a) ** 2 + (yr / b) ** 2 <= 1.0] = 255
+            contours, _ = cv2.findContours(
+                component.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
+            )
+            contour = max(contours, key=cv2.contourArea) if contours else None
+            if contour is not None and len(contour) >= 5:
+                (center, axes, angle) = cv2.fitEllipse(contour)
+                radians = np.deg2rad(float(angle))
+                cos_a, sin_a = np.cos(radians), np.sin(radians)
+                yy, xx = np.ogrid[:height, :width]
+                x_shift = xx - float(center[0])
+                y_shift = yy - float(center[1])
+                x_rot = cos_a * x_shift + sin_a * y_shift
+                y_rot = -sin_a * x_shift + cos_a * y_shift
+                major = max(float(axes[0]), 1.0) / 2.0
+                minor = max(float(axes[1]), 1.0) / 2.0
+                kept[(x_rot / major) ** 2 + (y_rot / minor) ** 2 <= 1.0] = 255
                 continue
-        kept[comp] = 255
+        kept[component] = 255
     return kept
+
+
+def gray_otsu(bgr: np.ndarray, cfg: dict) -> np.ndarray:
+    """Trial T01 only. Kept so the experiment script can still call mode=gray_otsu."""
+    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+    kernel = int(cfg.get("blur") or 0)
+    if kernel >= 3:
+        gray = cv2.GaussianBlur(gray, (kernel, kernel), 0)
+    _, mask = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    if gray[mask > 0].mean() < gray[mask == 0].mean():
+        mask = cv2.bitwise_not(mask)
+    return mask
+
+
+def segment_eggs(bgr: np.ndarray, cfg: dict | None = None) -> np.ndarray:
+    """Return a uint8 mask, 255 on egg pixels."""
+    if cfg is None:
+        cfg = load_cfg()
+    if cfg.get("mode") == "gray_otsu":
+        mask = gray_otsu(bgr, cfg)
+    else:
+        mask = white_mask(to_hsv(bgr, cfg), cfg)
+    mask = clean_mask(mask, cfg)
+    return filter_blobs(mask, cfg)
 
 
 def _score_split(cfg: dict, split_file: Path) -> dict:

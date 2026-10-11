@@ -1,8 +1,11 @@
 """Task 4: track eggs in the source video with the frozen T10 mask.
 
-configs/classical_final.yaml is not changed. OpenCV cannot decode the AV1
-source, so frames go through ffmpeg. Instance gates below are tracking-only.
-They drop shirt, hand, and text blobs that the white HSV mask also lights up.
+Input: data/video/source.mp4 (ffmpeg, because OpenCV cannot decode AV1).
+Output: video/tracked_full.mp4, a 30 s preview, and four stills.
+Run: python src/task4_track.py
+
+Each frame: detect_eggs, match_to_tracks (Hungarian), update_tracks (Kalman), draw.
+Gates below are tracking-only. They are not written into the still-image yaml.
 """
 
 from __future__ import annotations
@@ -22,18 +25,24 @@ from src.task2_classical import load_cfg, segment_eggs  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 
-# Tracking-only. Not written back into the still-image recipe.
-MIN_AREA = 8000
-MAX_AREA = 90000
-MIN_CIRC = 0.70
-MIN_ASPECT = 0.68
-MIN_CY_FRAC = 0.48
-MAX_DIST = 400.0
-MAX_MISS = 48
-IOU_W = 0.65
-Q_POS = 25.0
-Q_VEL = 40.0
-R_MEAS = 36.0
+# Tracking-only knobs. Edit these in a live interview. Do not copy them into the yaml.
+# min_area: drop specks and small text. max_area: drop the shirt and the table.
+# min_circularity / min_aspect: keep egg-shaped blobs.
+# min_cy_frac: ignore the top of the frame (captions, logo).
+# max_distance: a detection farther than this (pixels) cannot join an existing id.
+# max_missed_frames: how long an id may coast with no detection before it dies.
+min_area = 8000
+max_area = 90000
+min_circularity = 0.70
+min_aspect = 0.68
+min_cy_frac = 0.48
+max_distance = 400.0
+max_missed_frames = 48
+iou_weight = 0.65
+# Kalman noise. Larger Q trusts the new detection more. Larger R trusts the prediction more.
+q_pos = 25.0
+q_vel = 40.0
+r_meas = 36.0
 
 PALETTE = [
     (40, 180, 255),
@@ -71,15 +80,16 @@ def _ffmpeg_encode(path: Path, w: int, h: int, fps: float) -> subprocess.Popen:
     )
 
 
-def instances(mask: np.ndarray) -> list[dict]:
+def detect_eggs(mask: np.ndarray) -> list[dict]:
+    """Turn the binary mask into egg detections. One dict per kept blob."""
     height = mask.shape[0]
     n, labels, stats, cents = cv2.connectedComponentsWithStats(mask)
     found = []
     for i in range(1, n):
         area = int(stats[i, cv2.CC_STAT_AREA])
-        if area < MIN_AREA or area > MAX_AREA:
+        if area < min_area or area > max_area:
             continue
-        if float(cents[i][1]) < MIN_CY_FRAC * height:
+        if float(cents[i][1]) < min_cy_frac * height:
             continue
         comp = (labels == i).astype(np.uint8)
         cnts, _ = cv2.findContours(comp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -88,10 +98,10 @@ def instances(mask: np.ndarray) -> list[dict]:
         cnt = max(cnts, key=cv2.contourArea)
         per = cv2.arcLength(cnt, True)
         circ = 0.0 if per <= 0 else float(4 * np.pi * area / (per * per))
-        if circ < MIN_CIRC:
+        if circ < min_circularity:
             continue
         x, y, bw, bh = (int(v) for v in stats[i, :4])
-        if min(bw, bh) / float(max(bw, bh)) < MIN_ASPECT:
+        if min(bw, bh) / float(max(bw, bh)) < min_aspect:
             continue
         found.append(
             {
@@ -121,22 +131,25 @@ class Track:
         self.hits = 1
         self.bbox = det["bbox"]
         c = det["centroid"]
+        # State is [x, y, vx, vy]: position in pixels, speed in pixels per frame.
         self.x = np.array([c[0], c[1], 0.0, 0.0], dtype=np.float64)
-        self.p = np.diag([R_MEAS, R_MEAS, 100.0, 100.0])
+        self.p = np.diag([r_meas, r_meas, 100.0, 100.0])
 
     def predict(self) -> np.ndarray:
+        # Constant velocity. x and y each move by their own speed for one frame.
         f = np.array(
             [[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]],
             dtype=np.float64,
         )
         self.x = f @ self.x
-        self.p = f @ self.p @ f.T + np.diag([Q_POS, Q_POS, Q_VEL, Q_VEL])
+        self.p = f @ self.p @ f.T + np.diag([q_pos, q_pos, q_vel, q_vel])
         return self.x[:2].copy()
 
     def update(self, det: dict) -> None:
+        # Measure x and y only. Velocity is inferred, not observed.
         z = det["centroid"]
         h = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], dtype=np.float64)
-        s = h @ self.p @ h.T + np.eye(2) * R_MEAS
+        s = h @ self.p @ h.T + np.eye(2) * r_meas
         k = self.p @ h.T @ np.linalg.inv(s)
         self.x = self.x + k @ (z - h @ self.x)
         self.p = (np.eye(4) - k @ h) @ self.p
@@ -145,7 +158,10 @@ class Track:
         self.hits += 1
 
 
-def associate(tracks: list[Track], dets: list[dict]) -> tuple[list[tuple[int, int]], list[int], list[int]]:
+def match_to_tracks(
+    tracks: list[Track], dets: list[dict]
+) -> tuple[list[tuple[int, int]], list[int], list[int]]:
+    """Hungarian match. Cost mixes centroid distance and box overlap."""
     if not tracks or not dets:
         for tr in tracks:
             tr.predict()
@@ -155,10 +171,12 @@ def associate(tracks: list[Track], dets: list[dict]) -> tuple[list[tuple[int, in
     for i, tr in enumerate(tracks):
         for j, det in enumerate(dets):
             dist = float(np.linalg.norm(pred[i] - det["centroid"]))
-            if dist > MAX_DIST:
+            if dist > max_distance:
                 continue
             overlap = _bbox_iou(tr.bbox, det["bbox"])
-            cost[i, j] = (1.0 - IOU_W) * (dist / MAX_DIST) + IOU_W * (1.0 - overlap)
+            # Low cost is a good match. Distance is scaled by max_distance.
+            # (1 - iou_weight) weights distance. iou_weight weights (1 - box IoU).
+            cost[i, j] = (1.0 - iou_weight) * (dist / max_distance) + iou_weight * (1.0 - overlap)
     rows, cols = linear_sum_assignment(cost)
     pairs, used_t, used_d = [], set(), set()
     for r, c in zip(rows, cols):
@@ -170,6 +188,29 @@ def associate(tracks: list[Track], dets: list[dict]) -> tuple[list[tuple[int, in
     free_t = [i for i in range(len(tracks)) if i not in used_t]
     free_d = [j for j in range(len(dets)) if j not in used_d]
     return pairs, free_t, free_d
+
+
+def update_tracks(
+    tracks: list[Track],
+    dets: list[dict],
+    pairs: list[tuple[int, int]],
+    free_t: list[int],
+    free_d: list[int],
+    next_id: int,
+) -> tuple[list[Track], list[int], int]:
+    """Apply matches, coast unmatched ids, and birth a new id for a free detection."""
+    ids = [0] * len(dets)
+    for ti, di in pairs:
+        tracks[ti].update(dets[di])
+        ids[di] = tracks[ti].tid
+    for ti in free_t:
+        tracks[ti].miss += 1
+    alive = [tr for tr in tracks if tr.miss <= max_missed_frames]
+    for di in free_d:
+        alive.append(Track(next_id, dets[di]))
+        ids[di] = next_id
+        next_id += 1
+    return alive, ids, next_id
 
 
 def draw(frame: np.ndarray, dets: list[dict], ids: list[int]) -> None:
@@ -222,19 +263,9 @@ def run(src: Path, full_out: Path, preview_out: Path, frames_dir: Path) -> dict:
         if len(buf) < frame_bytes:
             break
         frame = np.frombuffer(buf, np.uint8).reshape(h, w, 3).copy()
-        dets = instances(segment_eggs(frame, cfg))
-        pairs, free_t, free_d = associate(tracks, dets)
-        ids = [0] * len(dets)
-        for ti, di in pairs:
-            tracks[ti].update(dets[di])
-            ids[di] = tracks[ti].tid
-        for ti in free_t:
-            tracks[ti].miss += 1
-        tracks = [tr for tr in tracks if tr.miss <= MAX_MISS]
-        for di in free_d:
-            tracks.append(Track(next_id, dets[di]))
-            ids[di] = next_id
-            next_id += 1
+        dets = detect_eggs(segment_eggs(frame, cfg))
+        pairs, free_t, free_d = match_to_tracks(tracks, dets)
+        tracks, ids, next_id = update_tracks(tracks, dets, pairs, free_t, free_d, next_id)
         draw(frame, dets, ids)
         encoder.stdin.write(frame.tobytes())
         counts.append(len(dets))
@@ -297,13 +328,13 @@ def run(src: Path, full_out: Path, preview_out: Path, frames_dir: Path) -> dict:
         "preview_start_s": start_s,
         "preview_window_detections": int(best_sum),
         "gates": {
-            "min_area": MIN_AREA,
-            "max_area": MAX_AREA,
-            "min_circularity": MIN_CIRC,
-            "min_aspect": MIN_ASPECT,
-            "min_cy_frac": MIN_CY_FRAC,
-            "max_dist_px": MAX_DIST,
-            "max_miss": MAX_MISS,
+            "min_area": min_area,
+            "max_area": max_area,
+            "min_circularity": min_circularity,
+            "min_aspect": min_aspect,
+            "min_cy_frac": min_cy_frac,
+            "max_dist_px": max_distance,
+            "max_miss": max_missed_frames,
             "kalman": True,
             "ellipse_draw": True,
         },
@@ -323,13 +354,13 @@ def run(src: Path, full_out: Path, preview_out: Path, frames_dir: Path) -> dict:
     note_path = REPO / "outputs/video/track_summary.json"
     note_path.parent.mkdir(parents=True, exist_ok=True)
     note_path.write_text(json.dumps(summary, indent=2) + "\n")
-    (REPO / "docs/video_drive_url.txt").write_text(
-        "Local file ready for Google Drive upload. Set sharing to anyone with the link.\n"
-        f"path: {full_out}\n"
-        f"bytes: {full_out.stat().st_size}\n"
-        f"duration_s: {summary['full']['duration']}\n"
-        "drive_url: PLACEHOLDER not uploaded\n"
-    )
+    # Leave a pasted Drive link in place. The upload is a manual step.
+    url_note = REPO / "docs/video_drive_url.txt"
+    if not url_note.exists():
+        url_note.write_text(
+            "DRIVE_URL_PLACEHOLDER — upload video/tracked_full.mp4 and paste the link.\n"
+            f"bytes: {full_out.stat().st_size}\n"
+        )
     return summary
 
 

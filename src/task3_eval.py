@@ -1,7 +1,9 @@
 """Task 3: score the frozen classical masks against SAM union masks.
 
-Eval is the primary split. Dev is reported beside it. The classical recipe
-is not retuned here.
+Inputs: outputs/classical_masks/ and outputs/sam_masks/.
+Output: outputs/figures/metrics_summary.json plus the histogram and failure grid.
+Run: python src/task3_eval.py
+Eval is the primary split. Dev is reported beside it. The recipe is not retuned here.
 """
 
 from __future__ import annotations
