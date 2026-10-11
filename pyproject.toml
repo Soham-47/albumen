@@ -1,0 +1,9 @@
+[project]
+name = "nosh-egg-cv"
+version = "0.1.0"
+description = "Nosh Robotics CV intern assignment: egg segmentation and tracking."
+requires-python = ">=3.10"
+readme = "README.md"
+
+[tool.setuptools]
+py-modules = []

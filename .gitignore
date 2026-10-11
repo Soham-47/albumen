@@ -1,0 +1,16 @@
+# Phase 1: large local artifacts stay out of git.
+# Small metadata under data/ (manifest.csv, splits/) is tracked.
+data/raw/
+data/*.zip
+data/video/
+data/sam_masks/
+data/classical_masks/
+checkpoints/
+outputs/
+video/*.mp4
+*.pt
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.egg-info/
