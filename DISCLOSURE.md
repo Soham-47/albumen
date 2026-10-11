@@ -1,10 +1,10 @@
 # AI tool disclosure
 
-Grok (xAI), through the Grok Build coding agent, drafted this repository with Soham. The assignment plan and the phase prompts in the Gmail sync thread were also written with that agent. No model was trained. Numbers in the report are from scripts run on this machine, not from guessed dataset facts.
+Grok (xAI), through the Grok Build coding agent, drafted this repository with Soham. No model was trained. Numbers in the report are from scripts run on this machine, not from guessed dataset facts.
 
 ## What the agent wrote
 
-- Plan and phase prompts (sections, trial design, report outline).
+- The work plan (sections, trial design, report outline).
 - Repository scaffold, `requirements.txt`, and scripts under `scripts/`.
 - `src/download_data.py`, `src/split.py`, `src/task1_sam.py`, `src/task2_classical.py`, `src/task3_eval.py`, `src/task4_track.py`, `src/metrics.py`, `src/viz.py`.
 - `experiments/log.md` entries after each measured trial.
@@ -20,4 +20,4 @@ Grok (xAI), through the Grok Build coding agent, drafted this repository with So
 
 ## What a person still has to do
 
-Soham reviews the report, uploads `video/tracked_full.mp4` to Google Drive (anyone with the link), pastes that URL over the placeholder in `docs/report.md` and `docs/video_drive_url.txt`, rebuilds the PDF if he wants the live link inside it, and sends the Wellfound reply himself. The agent does not email Wellfound.
+Soham reviews the report, uploads `video/tracked_full.mp4` to Google Drive (anyone with the link), pastes that URL over the placeholder in `docs/report.md` and `docs/video_drive_url.txt`, and rebuilds the PDF if he wants the live link inside it.

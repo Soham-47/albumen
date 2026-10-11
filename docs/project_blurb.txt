@@ -1,0 +1,1 @@
+Albumen: https://github.com/Soham-47/albumen — classical egg segmenter, SAM pseudo-masks, eval metrics, and tracking notes are in the README and docs/report.pdf.

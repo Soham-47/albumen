@@ -1,10 +1,10 @@
-# nosh-egg-cv
+# Albumen
 
-Nosh Robotics computer-vision intern assignment. Task 2 is a classical egg segmenter (no neural net). SAM ViT-B supplies pseudo ground truth. Task 4 tracks eggs in one YouTube clip with that same segmenter.
+Public repo: https://github.com/Soham-47/albumen
 
-Public repo: https://github.com/Soham-47/nosh-egg-cv
+Albumen segments eggs in still photos and tracks them in video. The segmenter is classical image processing: an HSV white-shell gate, a small blur, and open/close morphology. No network is trained.
 
-Written report: [docs/report.pdf](docs/report.pdf) (source: `docs/report.md`).
+SAM ViT-B builds pseudo ground-truth masks. Those masks are the reference for IoU and Dice. A constant-velocity Kalman tracker with Hungarian matching follows eggs in one 1080p clip.
 
 ## One command
 
@@ -14,7 +14,7 @@ Once the venv, `data/raw/`, the SAM checkpoint, and `data/video/source.mp4` exis
 bash scripts/run_all.sh
 ```
 
-That runs Task 1 (SAM, uses the cache), QA sheets, the frozen classical recipe, Task 3 metrics, and Task 4 tracking. It does not retune `configs/classical_final.yaml`.
+That runs SAM (from cache when present), the SAM contact sheets, the frozen classical recipe, the metrics, and tracking. It does not retune `configs/classical_final.yaml`.
 
 First-time setup (Python 3.12):
 
@@ -30,6 +30,8 @@ bash scripts/run_all.sh
 ```
 
 `scripts/setup_env.sh` installs the CPU torch wheel from `https://download.pytorch.org/whl/cpu`, then `requirements.txt`.
+
+Photos are a Roboflow egg export (CC BY 4.0): 110 readable 640×640 JPEGs, folder labels only, no boxes. The video is a public YouTube clip saved as `data/video/source.mp4` (1920×1080, 24 fps, about 60 s). OpenCV cannot decode the AV1 file, so tracking reads frames through ffmpeg.
 
 ## Environment measured here
 
@@ -63,11 +65,14 @@ Rough runtimes on this machine:
 | Classical | `python src/task2_classical.py --cfg configs/classical_final.yaml --save-all --score-dev` | `outputs/classical_masks/`, `outputs/classical_dev_metrics.csv` |
 | Metrics | `python src/task3_eval.py` | `outputs/figures/metrics_summary.json`, `iou_hist.png`, `failures_grid.png` |
 | Video | `python src/task4_track.py` | `video/tracked_full.mp4`, `video/tracked_preview.mp4`, `docs/figures/track_frame_0*.jpg` |
+| Panel demo | `python scripts/demo.py` | `outputs/demo_panels.png` |
 
-The live function for a threshold change is `segment_eggs(bgr, cfg)` in `src/task2_classical.py`. The frozen recipe is T10 in `configs/classical_final.yaml` (white HSV plus blur, open, and close). Dev mIoU 0.384 (n=85). Eval mIoU 0.407, Dice 0.546 (n=22). Three images are excluded from scores: `not_damaged_12`, `not_damaged_39`, `not_damaged_145`.
+`segment_eggs(bgr, cfg)` in `src/task2_classical.py` is the function to edit when you change a threshold. The shipped recipe is T10 in `configs/classical_final.yaml` (white HSV, blur 5, ellipse open 5, ellipse close 11). Dev mIoU 0.384 (n=85). Eval mIoU 0.407, Dice 0.546 (n=22). Three images are excluded from scores: `not_damaged_12`, `not_damaged_39`, `not_damaged_145`.
 
-`data/raw/`, `checkpoints/`, `outputs/`, and `video/*.mp4` are gitignored. Figures the report needs are copied under `docs/figures/`.
+Near-duplicate photos stay on the same side of the split. Groups use perceptual-hash Hamming distance ≤ 8, then a 4:1 cut with seed 42 (87 dev images, 23 eval images).
 
-The full tracked video is not on Google Drive yet. See `docs/video_drive_url.txt`.
+On the clip, the tracker reports 4 ids, 757 frames with at least one egg, and at most 2 eggs in a frame. Video-only gates (area, circularity, aspect, and a lower-frame centroid cut) live at the top of `src/task4_track.py`. They are not copied into the still-image yaml.
 
-AI use is listed in `DISCLOSURE.md`.
+`data/raw/`, `checkpoints/`, `outputs/`, and `video/*.mp4` are gitignored. Figures used by the write-up are under `docs/figures/`.
+
+A short code map, including where each knob lives, is in [docs/CODE_WALKTHROUGH.md](docs/CODE_WALKTHROUGH.md). The longer write-up is [docs/report.pdf](docs/report.pdf) (source: `docs/report.md`). Notes on model assistance are in `DISCLOSURE.md`.

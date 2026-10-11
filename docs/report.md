@@ -1,6 +1,6 @@
-# Egg segmentation and tracking
+# Albumen
 
-Nosh Robotics CV intern assignment. Code: https://github.com/Soham-47/nosh-egg-cv
+Classical egg segmentation and tracking. Code: https://github.com/Soham-47/albumen
 
 This note covers a classical segmenter, SAM ViT-B pseudo masks, an eval split, and tracking on one 60 s clip. It stays light on maths. The only formulas used for scores are:
 
@@ -83,7 +83,7 @@ Why this and not the longer plan recipe: those extras were tried and lowered dev
 | T12 | Loose circularity + ellipse | 0.345 | 0.447 | 0.129 | discard |
 | T13 | Loose shape + border cut | 0.333 | 0.426 | 0.188 | discard |
 
-T06–T09 stay in the log. They sit on the strict shape filter and score worse than T10. Brown was discarded because it pulled in wood, skin, and bags. Circularity ≥ 0.45 emptied more than half of dev. T10 is `configs/classical_final.yaml` and was not retuned in later phases.
+T06–T09 stay in the log. They sit on the strict shape filter and score worse than T10. Brown was discarded because it pulled in wood, skin, and bags. Circularity ≥ 0.45 emptied more than half of dev. T10 is `configs/classical_final.yaml` and was not retuned after it was chosen.
 
 ## 5. Task 3 — metrics
 
@@ -132,7 +132,7 @@ Frames 334, 523, 712, and 926:
 
 ## 7. AI disclosure
 
-See `DISCLOSURE.md` in the repo root. Short version: Grok drafted the plan, the phase prompts, and the code. Masks, metrics, and track counts were measured by running that code. No network was trained. Soham sends the Wellfound reply himself (`docs/wellfound_reply.txt`).
+See `DISCLOSURE.md` in the repo root. Short version: Grok drafted the plan and the code. Masks, metrics, and track counts were measured by running that code. No network was trained.
 
 ## 8. Limitations
 
