@@ -122,3 +122,13 @@ Leakage check: dev and eval path sets are disjoint (87 and 23 images). Group ids
 ## Final pick
 
 T10 white HSV plus morphology. Dev n=85, mIoU=0.3842, mean Dice=0.5048, empty_pred_rate=0. Masks for every image, including eval and the three excluded images, are in `outputs/classical_masks/`. Per-image dev scores are in `outputs/classical_dev_metrics.csv`. Eval scores are not in that file.
+
+## Phase 4 eval snapshot
+
+T10 was not retuned. Scores are classical masks versus SAM union masks. Excluded: `not_damaged_12`, `not_damaged_39`, `not_damaged_145`.
+
+Eval n=22: mIoU 0.4074±0.2142, Dice 0.5462±0.2182, precision 0.6852±0.3317, recall 0.5588±0.2007.
+
+Dev n=85: mIoU 0.3842±0.2627, Dice 0.5048±0.2694, precision 0.5527±0.3573, recall 0.6199±0.2718.
+
+Std is the population std. Full JSON: `outputs/figures/metrics_summary.json`. Figures: `outputs/figures/iou_hist.png`, `outputs/figures/failures_grid.png`. Notes: `outputs/figures/failure_notes.md`. Eval brown stratum had 2 images and was skipped. Dev brown mIoU was 0.1737 (n=11) against white 0.4155 (n=74).
