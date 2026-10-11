@@ -1,0 +1,18 @@
+# Kept recipe T10. Dev mIoU 0.3842, mean Dice 0.5048, empty_pred_rate 0.
+# Brown, circularity, ellipse fill, and border drop all lowered dev mIoU.
+mode: hsv
+white_s_max: 60
+white_v_min: 170
+brown_on: false
+brown_h: [5, 30]
+brown_s: [40, 220]
+brown_v: [40, 220]
+blur: 5
+open_k: 5
+close_k: 11
+min_area_frac: 0
+max_area_frac: 1
+min_circularity: 0
+ellipse_fill: false
+drop_border_frac: null
+fill_holes: false
