@@ -1,6 +1,6 @@
 # nosh-egg-cv
 
-Nosh Robotics computer-vision intern assignment. This checkout is **Phase 1 only**: repo layout, environment, dataset ingest, sanity checks, and the Task 4 source video. Task 1 SAM has not been run.
+Nosh Robotics computer-vision intern assignment. Phase 1 is the repo, environment, and data. Phase 2 is Task 1: SAM ViT-B pseudo masks. The classical segmenter is not started.
 
 ## Reproduce Phase 1
 
@@ -59,10 +59,8 @@ These numbers come from the Drive zip, not from the Universe page.
 
 `docs/assignment.pdf` is a copy of `~/Downloads/CV Intern Task Wellfound.pdf` (same bytes as the `(1)` download). The plan path `/workspace/nosh_assignment.pdf` does not exist on this machine.
 
-## Later phases
+## Phase 2 (Task 1 SAM)
 
-Do not start Task 1 until asked. The entry point will be:
+CPU only. `python src/task1_sam.py` runs `SamAutomaticMaskGenerator` (ViT-B) on every manifest image, caches raw proposals in `outputs/sam_cache/`, and writes instance and union PNGs plus `outputs/sam_masks/summary.csv`. QA sheets are `outputs/sam_qa/page_01.png` through `page_10.png` (`python scripts/sam_qa_sheets.py`).
 
-```bash
-python src/task1_sam.py --images data/raw --out data/sam_masks --checkpoint checkpoints/sam_vit_b_01ec64.pth
-```
+Filter rules are the constants at the top of `src/task1_sam.py`. The CPU pass that filled the cache used `points_per_side=16` and the library default `points_per_batch=64`. The script now sets `points_per_batch=8` so a cold rerun is less likely to be killed on a 16 GB machine. Cached proposals are reused, so that change does not recompute masks that are already on disk.
