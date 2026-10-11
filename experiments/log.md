@@ -132,3 +132,11 @@ Eval n=22: mIoU 0.4074±0.2142, Dice 0.5462±0.2182, precision 0.6852±0.3317, r
 Dev n=85: mIoU 0.3842±0.2627, Dice 0.5048±0.2694, precision 0.5527±0.3573, recall 0.6199±0.2718.
 
 Std is the population std. Full JSON: `outputs/figures/metrics_summary.json`. Figures: `outputs/figures/iou_hist.png`, `outputs/figures/failures_grid.png`. Notes: `outputs/figures/failure_notes.md`. Eval brown stratum had 2 images and was skipped. Dev brown mIoU was 0.1737 (n=11) against white 0.4155 (n=74).
+
+## Phase 5 tracking notes
+
+T10 in `configs/classical_final.yaml` was not retuned. Per frame, `segment_eggs` runs, then connected components. Tracking-only gates (not in the still-image config): area 8000-90000 px, circularity >= 0.70, bbox aspect >= 0.68, centroid y >= 0.48 of the frame height. Those cuts drop the shirt, the hand, and the logo, which the white HSV mask also lights up on this video.
+
+Association is Hungarian (`linear_sum_assignment`) on a mix of centroid distance and box IoU. Max match distance is 400 px. A constant-velocity Kalman filter predicts the centroid. A track can coast 48 frames. Drawn outlines are fitted ellipses.
+
+On the 1440-frame, 24 fps clip this produced 4 IDs, never more than 2 eggs in one frame, and a detection on 757 frames (mean 1.65 eggs when present). id 2 stays on the egg that is not spun. The spun egg is hidden in the hand, so it comes back as a new id. The left egg is missed while the "Raw Egg" caption sits on it, because that blob is no longer round enough. SAM was not run. Summary: `outputs/video/track_summary.json`.

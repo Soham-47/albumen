@@ -1,0 +1,3 @@
+Local file ready for Drive upload (anyone with the link).
+path: outputs/video/tracked_full.mp4
+drive_url: PLACEHOLDER not uploaded
