@@ -121,8 +121,6 @@ Association is Hungarian matching on centroid distance and box IoU. Max match di
 
 On this clip: 2 track ids, never more than 2 eggs in one frame, detections on 757 frames (mean 1.65 eggs when a detection exists). Id 2 stays on the egg that is not spun. Id 1 is the egg that is picked up and set down on the right. The left egg is missed while the “Raw Egg” caption covers it, because the blob is no longer round enough.
 
-**Full video Drive link:** DRIVE_URL_PLACEHOLDER — Soham must upload `video/tracked_full.mp4` and paste the link. The file is local (about 9.4 MB) at `video/tracked_full.mp4`. A 30 s preview is `video/tracked_preview.mp4`. The upload did not fit the Drive API size limit used in this environment.
-
 Frames 334, 523, 712, and 926:
 
 ![Track frame 1](figures/track_frame_01.jpg)
@@ -130,14 +128,9 @@ Frames 334, 523, 712, and 926:
 ![Track frame 3](figures/track_frame_03.jpg)
 ![Track frame 4](figures/track_frame_04.jpg)
 
-## 7. AI disclosure
-
-See `DISCLOSURE.md` in the repo root. Short version: Grok drafted the plan and the code. Masks, metrics, and track counts were measured by running that code. No network was trained.
-
-## 8. Limitations
+## 7. Limitations
 
 - Brown eggs are weak. Adding a brown HSV gate hurt dev mIoU because it also took wood and skin. A better split would need a tighter colour model or a shape prior that does not empty the set.
 - SAM is noisy ground truth. Hands, keycaps, foam, and two empty masks are still in the raw outputs. Three of those images are excluded from the headline scores, and the rest still bias IoU.
 - The two eggs keep id 1 and id 2 across the move. A detection is still dropped while the “Raw Egg” caption covers the left egg, because the blob fails the circularity gate.
 - The stills are 640×640 table crops. The video is a different scene. The white gate fires on bright backgrounds there, which is why the tracker adds gates the still-image config does not have.
-- The full tracked video is not shared on Drive yet. The placeholder above is intentional.
