@@ -54,7 +54,7 @@ Run: `python src/task4_track.py`
 - Kalman state on each track is `[x, y, vx, vy]`: position in pixels and speed in pixels per frame. `predict` moves x and y by one frame of speed. `update` corrects x and y from the detection. Speed is inferred.
 - `update_tracks` applies matches, increments `miss` on unmatched ids, drops an id after `max_missed_frames`, and births a new id for a detection nobody claimed.
 - `draw` paints a fitted ellipse, a centroid, and `id N`.
-- On 1440 frames the frozen gates give 4 unique ids, 757 frames with at least one egg, and at most 2 eggs in a frame.
+- On 1440 frames the gates give 2 unique ids, 757 frames with at least one egg, and at most 2 eggs in a frame. A hidden track holds its last position (`max_missed_frames` is 720) and can match up to `max_distance` (1400 px).
 - Outputs: `video/tracked_full.mp4`, `video/tracked_preview.mp4`, `docs/figures/track_frame_01.jpg` through `track_frame_04.jpg`.
 
 ## Parameter Tuning

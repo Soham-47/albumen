@@ -71,7 +71,7 @@ Rough runtimes on this machine:
 
 Near-duplicate photos stay on the same side of the split. Groups use perceptual-hash Hamming distance ≤ 8, then a 4:1 cut with seed 42 (87 dev images, 23 eval images).
 
-On the clip, the tracker reports 4 ids, 757 frames with at least one egg, and at most 2 eggs in a frame. Video-only gates (area, circularity, aspect, and a lower-frame centroid cut) live at the top of `src/task4_track.py`. They are not copied into the still-image yaml.
+On the clip, the tracker reports 2 ids, 757 frames with at least one egg, and at most 2 eggs in a frame. A hidden track stays at its last position for up to 30 s and can rejoin a detection up to 1400 px away, so the egg that is moved across the table keeps its id. Video-only gates (area, circularity, aspect, and a lower-frame centroid cut) live at the top of `src/task4_track.py`. They are not copied into the still-image yaml.
 
 `data/raw/`, `checkpoints/`, `outputs/`, and `video/*.mp4` are gitignored. Figures used by the write-up are under `docs/figures/`.
 

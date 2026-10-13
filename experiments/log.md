@@ -140,3 +140,7 @@ T10 in `configs/classical_final.yaml` was not retuned. Per frame, `segment_eggs`
 Association is Hungarian (`linear_sum_assignment`) on a mix of centroid distance and box IoU. Max match distance is 400 px. A constant-velocity Kalman filter predicts the centroid. A track can coast 48 frames. Drawn outlines are fitted ellipses.
 
 On the 1440-frame, 24 fps clip this produced 4 IDs, never more than 2 eggs in one frame, and a detection on 757 frames (mean 1.65 eggs when present). id 2 stays on the egg that is not spun. The spun egg is hidden in the hand, so it comes back as a new id. The left egg is missed while the "Raw Egg" caption sits on it, because that blob is no longer round enough. SAM was not run. Summary: `outputs/video/track_summary.json`.
+
+## ID hold across the move
+
+The 400 px / 48-frame gates above created ids 3 and 4 for the same two eggs. The tracker now freezes a hidden track at its last position, allows a match out to 1400 px, and keeps a track for 720 frames. Re-run on the same clip: 2 ids, still 757 frames with a detection, still at most 2 eggs in a frame. Id 1 is the egg that is moved to the right. Id 2 stays on the egg that sits still.

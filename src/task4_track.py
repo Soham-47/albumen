@@ -30,14 +30,16 @@ REPO = Path(__file__).resolve().parents[1]
 # min_circularity / min_aspect: keep egg-shaped blobs.
 # min_cy_frac: ignore the top of the frame (captions, logo).
 # max_distance: a detection farther than this (pixels) cannot join an existing id.
+# The spun egg is carried across the table, so this is most of the frame width.
 # max_missed_frames: how long an id may coast with no detection before it dies.
+# 48 frames (2 s) died during the hand spin. 30 s covers that occlusion.
 min_area = 8000
 max_area = 90000
 min_circularity = 0.70
 min_aspect = 0.68
 min_cy_frac = 0.48
-max_distance = 400.0
-max_missed_frames = 48
+max_distance = 1400.0
+max_missed_frames = 24 * 30
 iou_weight = 0.65
 # Kalman noise. Larger Q trusts the new detection more. Larger R trusts the prediction more.
 q_pos = 25.0
@@ -136,6 +138,12 @@ class Track:
         self.p = np.diag([r_meas, r_meas, 100.0, 100.0])
 
     def predict(self) -> np.ndarray:
+        # While the egg is hidden, keep the last position. A constant-velocity
+        # coast walks the track off the table, so the egg cannot rejoin when
+        # the hand sets it down somewhere else.
+        if self.miss > 0:
+            self.x[2] = 0.0
+            self.x[3] = 0.0
         # Constant velocity. x and y each move by their own speed for one frame.
         f = np.array(
             [[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]],

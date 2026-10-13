@@ -117,9 +117,9 @@ Source: `https://www.youtube.com/watch?v=Y4JyV94y2_A`, saved as `data/video/sour
 
 Per frame: `segment_eggs` with T10, then connected components. Extra gates exist only in the tracker, not in the still-image config: area 8000–90000 px, circularity ≥ 0.70, box aspect ≥ 0.68, centroid y ≥ 0.48 of the frame height. Those cuts drop the shirt, the hand, and the logo, which the white gate also lights up.
 
-Association is Hungarian matching on centroid distance and box IoU. Max match distance is 400 px. A constant-velocity Kalman filter predicts the centroid. A track can coast 48 frames. Drawn outlines are fitted ellipses.
+Association is Hungarian matching on centroid distance and box IoU. Max match distance is 1400 px, wide enough for the egg to be set down across the table. A Kalman filter predicts the centroid while the egg is visible. While it is hidden, the track stays at the last position instead of coasting off in a straight line. A track can live 720 frames (30 s) without a detection. Drawn outlines are fitted ellipses.
 
-On this clip: 4 track ids, never more than 2 eggs in one frame, detections on 757 frames (mean 1.65 eggs when a detection exists). One id stays on the egg that is not spun. The spun egg is hidden in the hand and returns as a new id. The left egg is missed while the “Raw Egg” caption covers it, because the blob is no longer round enough.
+On this clip: 2 track ids, never more than 2 eggs in one frame, detections on 757 frames (mean 1.65 eggs when a detection exists). Id 2 stays on the egg that is not spun. Id 1 is the egg that is picked up and set down on the right. The left egg is missed while the “Raw Egg” caption covers it, because the blob is no longer round enough.
 
 **Full video Drive link:** DRIVE_URL_PLACEHOLDER — Soham must upload `video/tracked_full.mp4` and paste the link. The file is local (about 9.4 MB) at `video/tracked_full.mp4`. A 30 s preview is `video/tracked_preview.mp4`. The upload did not fit the Drive API size limit used in this environment.
 
@@ -138,6 +138,6 @@ See `DISCLOSURE.md` in the repo root. Short version: Grok drafted the plan and t
 
 - Brown eggs are weak. Adding a brown HSV gate hurt dev mIoU because it also took wood and skin. A better split would need a tighter colour model or a shape prior that does not empty the set.
 - SAM is noisy ground truth. Hands, keycaps, foam, and two empty masks are still in the raw outputs. Three of those images are excluded from the headline scores, and the rest still bias IoU.
-- Tracking uses 4 ids for 2 eggs. The id breaks when a hand hides the spun egg. Caption text also kills the circularity gate on the left egg.
+- The two eggs keep id 1 and id 2 across the move. A detection is still dropped while the “Raw Egg” caption covers the left egg, because the blob fails the circularity gate.
 - The stills are 640×640 table crops. The video is a different scene. The white gate fires on bright backgrounds there, which is why the tracker adds gates the still-image config does not have.
 - The full tracked video is not shared on Drive yet. The placeholder above is intentional.
