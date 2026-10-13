@@ -1,4 +1,1 @@
-DRIVE_URL_PLACEHOLDER — Soham must upload video/tracked_full.mp4 and paste the link.
-Local file: video/tracked_full.mp4 (same bytes as outputs/video/tracked_full.mp4, about 9.4 MB).
-Share setting needed: anyone with the link.
-The file was not uploaded from this machine: the Drive create-file call is limited to about 8 MB of JSON, and this mp4 is larger.
+https://youtu.be/Y4JyV94y2_A?si=b3lVASqabH76IUAr

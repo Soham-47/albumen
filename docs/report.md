@@ -121,6 +121,8 @@ Association is Hungarian matching on centroid distance and box IoU. Max match di
 
 On this clip: 2 track ids, never more than 2 eggs in one frame, detections on 757 frames (mean 1.65 eggs when a detection exists). Id 2 stays on the egg that is not spun. Id 1 is the egg that is picked up and set down on the right. The left egg is missed while the “Raw Egg” caption covers it, because the blob is no longer round enough.
 
+Full video: https://youtu.be/Y4JyV94y2_A?si=b3lVASqabH76IUAr
+
 Frames 334, 523, 712, and 926:
 
 ![Track frame 1](figures/track_frame_01.jpg)
